@@ -1,0 +1,13 @@
+import <ravelua/api501>
+
+namespace lua {
+	extern (linkname: "luaL_fileresult")   int   fileResult   (lua::State* L, int stat, const(char) *fname);
+	extern (linkname: "luaL_execresult")   int   execResult   (lua::State* L, int stat);
+	extern (linkname: "luaL_loadfilex")    int   loadFileX    (lua::State* L, const(char) *filename, const(char) *mode);
+	extern (linkname: "luaL_loadbufferx")  int   loadBufferX  (lua::State* L, const(char) *buff, size_t sz, const(char) *name, const(char) *mode);
+	extern (linkname: "luaL_traceback")    void  traceback    (lua::State* L, lua::State* L1, const(char) *msg, int level);
+	extern (linkname: "luaL_setfuncs")     void  setFuncs     (lua::State* L, const (lua::Reg) *l, int nup);
+	extern (linkname: "luaL_pushmodule")   void  pushModule   (lua::State* L, const(char) *modname, int sizehint);
+	extern (linkname: "luaL_testudata")    void* testUdata    (lua::State* L, int ud, const(char) *tname);
+	extern (linkname: "luaL_setmetatable") void  setMetatable (lua::State* L, const(char) *tname);
+}

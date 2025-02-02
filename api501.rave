@@ -1,0 +1,222 @@
+namespace lua {
+	@if(__RAVE_PLATFORM == "X86") type size_t = uint;
+	@else type size_t = ulong;
+
+	type State = void;
+	type Integer = long;
+	type Number = double;
+
+	type Alloc = void* (void*, void*, lua::size_t, lua::size_t);
+	type CFunction = int (lua::State* );
+
+	struct Reg {
+		const (char)* name;
+		lua::CFunction func;
+	};
+
+	alias multRet = -1;
+	alias regIndex = -10000;
+	alias envIndex = -10001;
+	alias globalIndex = -10002;
+
+	(inline) int upvalueIndex(int i) {
+		return = lua::globalIndex - i;
+	}
+
+	/* thread status */
+	alias OK = 0;
+	alias Yield = 1;
+	alias ErrRun = 2;
+	alias ErrSyntax = 3;
+	alias ErrMem = 4;
+	alias ErrErr = 5;
+
+	alias ErrFile = ErrErr + 1;
+
+	/*
+	** basic types
+	*/
+	alias TNone = -1;
+	alias TNil = 0;
+	alias TBoolean = 1;
+	alias TLightUserdata = 2;
+	alias TNumber = 3;
+	alias TString = 4;
+	alias TTable = 5;
+	alias TFunction = 6;
+	alias TUserdata = 7;
+	alias TThread = 8;
+
+	/* minimum Lua stack available to a C function */
+	alias MinStack = 20;
+
+	/*
+	** garbage-collection function and options
+	*/
+	alias GCStop = 0;
+	alias GCRestart = 1;
+	alias GCCollect = 2;
+	alias GCCount = 3;
+	alias GCCountB = 4;
+	alias GCStep = 5;
+	alias GCSetPause = 6;
+	alias GCSetStepMul = 7;
+	alias GCIsRunning = 9;
+	alias GCGen = 10;
+	alias GCInc = 11;
+
+	extern (vararg, linkname: "lua_gc") gcAction(lua::State* L, int what);
+
+	/*
+	** miscellaneous functions
+	*/
+	extern (linkname: "lua_error")  int error  (lua::State* L);
+	extern (linkname: "lua_next")   int next   (lua::State* L, int idx);
+	extern (linkname: "lua_concat") int concat (lua::State* L, int n);
+	extern (linkname: "lua_len")    int len    (lua::State* L, int idx);
+
+	extern (linkname: "lua_stringtonumber") luasize_t internal_stringtonumber(lua::State* L, char *s);
+
+	extern (linkname: "lua_getallocf") lua::Alloc getallocf (lua::State* L, void** ud);
+	extern (linkname: "lua_setallocf") void       setallocf (lua::State* L, lua::Alloc f, void* ud);
+
+	extern (linkname: "lua_version") lua::Number* version(lua::State* L);
+
+	/*
+	** state manipulation
+	*/
+	extern (linkname: "lua_newstate")    lua::State* newstate    (lua::Alloc f, void* ud);
+	extern (linkname: "lua_close")       void        close       (lua::State* L);
+	extern (linkname: "lua_newthread")   lua::State* newthread   (lua::State* L);
+	extern (linkname: "lua_resetthread") void        resetthread (lua::State* L, lua_State* th);
+
+	extern (linkname: "lua_atpanic") lua::CFunction atpanic(lua::State* L, lua::CFunction panicf);
+
+	/*
+	** basic stack manipulation
+	*/
+	extern (linkname: "lua_gettop")     int  gettop    (lua::State* L);
+	extern (linkname: "lua_settop")     void settop    (lua::State* L, int idx);
+	extern (linkname: "lua_pushvalue")  void pushValue (lua::State* L, int idx);
+	extern (linkname: "lua_remove")     void remove    (lua::State* L, int idx);
+	extern (linkname: "lua_insert")     void insert    (lua::State* L, int idx);
+	extern (linkname: "lua_replace")    void replace   (lua::State* L, int idx);
+	extern (linkname: "lua_checkstack") int checkStack (lua::State* L, int sz);
+
+	(inline) void pop(lua::State* L, int n) {
+		lua::settop(L, -n - 1);
+	}
+
+	extern (linkname: "lua_xmove")      void xmove (lua::State* from, State *to, int n);
+
+	/*
+	** get functions (Lua -> stack)
+	*/
+	extern (linkname: "lua_gettable") void getTable (lua::State* L, int idx, const(char)* k);
+	extern (linkname: "lua_getfield") void getField (lua::State* L, int idx, const(char)* k);
+	extern (linkname: "lua_rawget")   void rawget   (lua::State* L, int idx);
+	extern (linkname: "lua_rawgeti")  void rawgeti  (lua::State* L, int idx, int n);
+
+	(inline) void getGlobal(lua::State* L, const (char)* k) {lua::getField(L, lua::globalIndex, k);}
+
+	extern (linkname: "lua_createtable") void createTable(lua::State* L, int narr, int nrec);
+	(inline) void newtable(lua::State* L) {
+		lua::createtable(L, 0, 0);
+	}
+	extern (linkname: "lua_newuserdata")  void* newUserdata  (lua::State* L, lua::size_t sz);
+	extern (linkname: "lua_getmetatable") int   getMetatable (lua::State* L, int objindex);
+	extern (linkname: "lua_getfenv")      void  getfenv      (lua::State* L, int idx);
+
+	/*
+	** set functions (stack -> Lua)
+	*/
+	extern (linkname: "lua_settable") void setTable (lua::State* L, int idx);
+	extern (linkname: "lua_setfield") void setField (lua::State* L, int idx, const(char)* k);
+	extern (linkname: "lua_rawset")   void rawset   (lua::State* L, int idx);
+	extern (linkname: "lua_rawseti")  void rawseti  (lua::State* L, int idx, int n);
+
+	(inline) void setGlobal(lua::State* L, const (char)* k) {lua::setField(state, lua::globalIndex, k);}
+
+	extern (linkname: "lua_setmetatable") int setMetatable (lua::State* L, int objindex);
+	extern (linkname: "lua_setfenv")      int setfenv      (lua::State* L, int idx);
+
+	/* ** */
+
+	extern (linkname: "lua_pcallk") int pcallk(lua::State* L, int nargs, int nresults, int msgh, void* ctx, void* k);
+	(inline) int pcall(lua::State* L, int f1, int retType, int f2) => lua::pcallk(state, f1, retType, f2, 0, null);
+
+	extern (linkname: "lua_pushboolean") void pushBool    (lua::State* L, bool b);
+	extern (linkname: "lua_pushinteger") void pushInt     (lua::State* L, int n);
+	extern (linkname: "lua_pushstring")  void pushString  (lua::State* L, const(char)* str);
+	extern (linkname: "lua_pushnil")     void pushNil     (lua::State* L);
+	extern (linkname: "lua_pushnumber")  void pushNumber  (lua::State* L, lua::Number n);
+	extern (linkname: "lua_pushlstring") void pushLString (lua::State* L, const(char)* str, int length);
+	extern (linkname: "lua_pushthread")  int  pushThread  (lua::State* L);
+	extern (linkname: "lua_pushvalue")   void pushValue   (lua::State* L, int index);
+
+	extern (linkname: "lua_tointeger") int toInteger(lua::State* L, int index);
+	extern (linkname: "lua_tonumber") lua::Number toNumber(lua::State* L, int index);
+	extern (linkname: "lua_tostring") char* toString(lua::State* L, int index);
+
+	extern (linkname: "lua_type") int type(lua::State* L, int index);
+	(inline) bool isnil(lua::State* L, int index) {
+		return = lua::type(L, index) == TNil;
+	}
+
+	extern (linkname: "lua_typename") char* typeName(lua::State* L, int tp);
+
+	extern (linkname: "lua_remove") void remove(lua::State* L, int index);
+	extern (linkname: "lua_replace") void replace(lua::State* L, int index);
+
+	/*
+	** auxiliary
+	*/
+	extern (linkname: "luaL_newstate") State* newstate();
+	extern (linkname: "luaL_openlibs") void openLibs(lua::State* L);
+
+	extern (linkname: "luaL_openlib") void openLib (lua::State* L, const(char) *libname, const luaL_Reg *l, int nup);
+	extern (linkname: "luaL_register") void register (lua::State* L, const(char) *libname, const luaL_Reg *l);
+
+	extern (linkname: "luaL_getmetafield") int getMetafield (lua::State* L, int obj, const(char) *e);
+	extern (linkname: "luaL_callmeta")     int callMeta     (lua::State* L, int obj, const(char) *e);
+	extern (linkname: "luaL_typerror")     int typError     (lua::State* L, int narg, const(char) *tname);
+	extern (linkname: "luaL_argerror")     int argError     (lua::State* L, int numarg, const(char) *extramsg);
+
+	extern (linkname: "luaL_checklstring") const(char) *checkLString (lua::State* L, int numArg, lua::size_t *l);
+	extern (linkname: "luaL_optlstring")   const(char) *optLString   (lua::State* L, int numArg, const(char) *def, lua::size_t *l);
+
+	extern (linkname: "luaL_checknumber") lua::Number checkNumber (lua::State* L, int numArg);
+	extern (linkname: "luaL_optnumber")   lua::Number optNumber   (lua::State* L, int nArg, lua::Number def);
+
+	extern (linkname: "luaL_checkinteger") lua::Integer checkInteger (lua::State* L, int numArg);
+	extern (linkname: "luaL_optinteger")   lua::Integer optInteger   (lua::State* L, int nArg, Integer def);
+
+	extern (linkname: "luaL_checkstack") void checkStack (lua::State* L, int sz, const(char) *msg);
+	extern (linkname: "luaL_checktype")  void checkType  (lua::State* L, int narg, int t);
+	extern (linkname: "luaL_checkany")   void checkaAny  (lua::State* L, int narg);
+
+	extern (linkname: "luaL_newmetatable") int   newMetatable (lua::State* L, const(char) *tname);
+	extern (linkname: "luaL_checkudata") void *checkUdata (lua::State* L, int ud, const(char) *tname);
+
+	extern (linkname: "luaL_where") void where (lua::State* L, int lvl);
+	extern (linkname: "luaL_error") int error (lua::State* L, const(char) *fmt, ...);
+
+	extern (linkname: "luaL_checkoption") int checkOption (lua::State* L, int narg, const(char) *def, const(const(char) *) *lst);
+
+	/* pre-defined references */
+	alias NoRef = -2;
+	alias RefNil = -1;
+
+	extern (linkname: "luaL_ref") int ref (lua::State* L, int t);
+	extern (linkname: "luaL_unref") void unref (lua::State* L, int t, int ref);
+
+	extern (linkname: "luaL_loadfile") int loadFile (lua::State* L, const(char) *filename);
+	(inline) int doFile(lua::State* L, char* filename) => (lua::loadFile(L, filename) || lua::pcall(L, 0, lua::multRet, 0));
+
+	extern (linkname: "luaL_loadbuffer") int loadBuffer (lua::State* L, const(char) *buff, size_t sz, const(char) *name);
+	extern (linkname: "luaL_loadstring") int loadString (lua::State* L, const(char) *s);
+
+	extern (linkname: "luaL_gsub") const(char) *gsub (lua::State* L, const(char) *s, const(char) *p, const(char) *r);
+
+	extern (linkname: "luaL_findtable") const(char) *findTable (lua::State* L, int idx, const(char) *fname, int szhint);
+}

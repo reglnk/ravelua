@@ -1,0 +1,6 @@
+import <ravelua/api502>
+
+namespace lua {
+	extern (linkname: "lua_toclose")   void toclose   (lua::State* L, int idx);
+	extern (linkname: "lua_closeslot") void closeslot (lua::State* L, int idx);
+}
